@@ -1,0 +1,786 @@
+---
+title: "Red Wine Analysis by Harsh Masher"
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+
+# Load all of the packages that you end up using in your analysis in this
+# code chunk.
+library(ggplot2)
+library(dplyr)
+library(GGally)
+library(scales)
+library(memisc)
+library(gridExtra)
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+setwd("C:/Old Computer/Udacity/Lesson 4- EDA R/Project")
+prw <- read.csv("Red Wine Quality.csv")
+```
+
+# About
+
+This data set contains 1,599 red wines with 11 variables on the
+chemical properties of the wine. The quality of each wine was rated 
+between 0 (very bad) and 10 (very excellent) by atleast three wine experts. 
+I will be using the statistical program R to evaluate the dataset with 
+descriptive statistics and exploratory data analysis. 
+
+# Univariate Plots Section
+
+In this section, I will perform some preliminary exploratory analysis of 
+the dataset. I will run some basic functions and create univaraite plots
+to understand the structure of the dataset and individual variables.
+
+To start the analysis, it is important to understand the basic structure of the dataset. Below, the interquartile range, minimum, maximum, median, and mean
+values of the individual values are listed. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Summary}
+#summary of the variables within the dataset
+summary(prw)
+```
+
+###Initial Observations
+
+* There are 1599 observations of 11 numerical variables
+* X is the unique identifier for the different wines, ranging from 1-15999
+* The categorical quality variable ranges from 0-10 in the literature, but in 
+the dataset only ranges from 3-8
+* All wines in the sample have an acidic pH
+* Free sulfur dioxide and total sulfur dioxide appear to be dependent 
+* The density appears to be dependent on the alcohol and sugar content of the
+wine
+* None of the wines are considered "sweet" because all wines have sugar content 
+below 45 g/liter
+
+In addition to the quality variable, I want to create a new "rating" variable
+to categorize the different wines. Below, I create a new variable that 
+rates wines as either "lousy", "average", or "superb" based on the wine quality.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, Rating}
+#creating a new variable, rating, from the quality variable
+
+prw$rating <- ifelse(prw$quality < 5, 'lousy', ifelse(
+  prw$quality < 7, 'average', 'superb'))
+  
+prw$rating <- ordered(prw$rating,
+                     levels = c('lousy', 'average', 'superb'))
+```
+
+Want to also create a "total.acidity" variable as the sum of the citric, 
+tartaric, and acetic acid. Tartaric and acetic acid are represented in the 
+dataset by fixed and volatile acidity, respectively.  
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, Total_Acidity}
+prw$total.acidity <- prw$fixed.acidity + prw$volatile.acidity + prw$citric.acid
+```
+
+It is important to visualize the data. Below are the univariate graphs of the variables.(Note: Sulfur Dioxide will be used interchangeably with **SO2** in 
+graphs throughout the analysis)
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots}
+#plotting the univariate graphs
+
+grid.arrange(qplot(prw$fixed.acidity, xlab = "Fixed Acidity", binwidth = 0.5),
+             qplot(prw$volatile.acidity, xlab = "Volatile Acidity",
+                   binwidth = .05),
+             qplot(prw$citric.acid, xlab = "Citric Acid", binwidth = .05),
+             qplot(prw$residual.sugar, xlab = "Residual Sugar", binwidth = .4),
+             qplot(prw$chlorides, xlab = "Chlorides", binwidth = .025),
+             qplot(prw$free.sulfur.dioxide, xlab = " Free SO2", binwidth = 4),
+             qplot(prw$total.sulfur.dioxide, xlab = "Total SO2", binwidth = 20),
+             qplot(prw$density, xlab = "Density", binwidth = .001),
+             qplot(prw$pH, xlab = "pH", binwidth = .05),
+             qplot(prw$sulphates, xlab = "Sulphates", binwidth = .1),
+             qplot(prw$alcohol, xlab = "Alcohol", binwidth = .25),
+             qplot(prw$quality, xlab = "Quality"),
+             ncol = 4)
+```
+
+# Univariate Analysis
+
+After creating the univariate graphs of the variables, some observations can be
+made about the distributions:
+
+* Normal: Density, pH
+* Positively Skewed and long-tailed: Fixed Acidity, Citric Acid, Free Sulfur 
+Dioxide, Total Sulfur Dioxide, Sulphates
+* Contain Many Outliers: Residual Sugar, Chlorides
+
+Two common transformations for skewed graphs are *log10()* and *sqrt*. We will 
+start by investigating the log10() transformation of the positively skewed
+graphs. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_log10_Plots}
+#log10 transformation of the positively skewed graphs
+
+grid.arrange(ggplot(data = prw,
+                    aes(x = fixed.acidity)) + 
+               geom_histogram(binwidth = .2) +
+               scale_x_continuous(log10_trans(), limits = c(0, 20)) +
+               ggtitle("Log10 Transformation of Fixed Acidity") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = volatile.acidity)) +
+  geom_histogram(binwidth = .03) +
+  scale_x_continuous(log10_trans(), limits = c(0, 1.5)) +
+               ggtitle("Log10 Transformation of Volatile Acidity") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = citric.acid)) +
+  geom_histogram(binwidth = .05) +
+  scale_x_continuous(log10_trans(), limits = c(0,1)) +
+               ggtitle("Log10 Transformation of Citric Acid") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = free.sulfur.dioxide)) +
+  geom_histogram(binwidth = 2) +
+  scale_x_continuous(log10_trans()) +
+               ggtitle("Log10 Transformation of Free SO2") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = total.sulfur.dioxide)) +
+  geom_histogram(binwidth = 3) +
+  scale_x_continuous(log10_trans(), limits = c(0, 120)) +
+               ggtitle("Log10 Transformation of Total SO2") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = sulphates)) +
+  geom_histogram(binwidth = .05) +
+  scale_x_continuous(log10_trans(), limits = c(0,2)) +
+               ggtitle("Log10 Transformation of Sulphates") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+ncol = 2)
+```
+
+Surprisingly, the log10 transformation did not make any of the graphs
+normal, although the Volatile Acidity graph does appear to be bimodal. 
+The remaining graphs are positively skewed. Perhaps the square root 
+transformation will be more effective. 
+
+Below are the square root transformations of the skewed graphs.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_SQRT_Plots}
+#Sqrt transformation of the skewed graphs
+
+grid.arrange(ggplot(data = prw,
+       aes(x = fixed.acidity)) +
+  geom_histogram(binwidth = .2) +
+  scale_x_continuous(sqrt_trans()) +
+    ggtitle("Sqrt Transformation of Fixed Acidity") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = volatile.acidity)) +
+  geom_histogram(binwidth = .05) +
+   scale_x_continuous(sqrt_trans()) +
+  ggtitle("Sqrt Transformation of Volatile Acidity") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = citric.acid)) +
+  geom_histogram(binwidth = .03) +
+  scale_x_continuous(sqrt_trans()) +
+  ggtitle("Sqrt Transformation of Citric Acid") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = free.sulfur.dioxide)) +
+  geom_histogram(binwidth = 2) +
+  scale_x_continuous(sqrt_trans()) +
+  ggtitle("Sqrt Transformation of Free SO2") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = total.sulfur.dioxide)) +
+  geom_histogram(binwidth = 5) +
+  scale_x_continuous(sqrt_trans(), limits = c(0,200)) +
+  ggtitle("Sqrt Transformation of Total SO2") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+
+ggplot(data = prw,
+       aes(x = sulphates),
+       xlab = 'Sulphates') +
+  geom_histogram(binwidth = .075) +
+  scale_x_continuous(sqrt_trans(), limits = c(0,2)) +
+  ggtitle("Sqrt Transformation of Sulphates") +
+               theme(plot.title = element_text(size = 10, face = "bold")),
+ncol = 2)
+```
+
+The square root transformation makes the volatile acidity graph normal. 
+The remaining graphs are positively skewed and long-tailed.
+
+After observing the citric acid graphs, it becomes evident that there are 
+several citric acid values of 0.00.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, Univariate_Citric_Acid}
+length(subset(prw, citric.acid == 0)$citric.acid)
+```
+
+We can see that citric acid has 132 values of 0. Important to take this into consideration for future analysis as these values will skew the data. 
+
+As previously discussed, the residual sugar and chlorides variables appear to 
+have many outliers. One way to combat this is to limit the values to the 95th percentile. Below are the graphs for 95th percentile of residual sugar and 
+chlorides as well as the log10() and sqrt transformations of those graphs.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Outlier_Plots}
+p <- ggplot(data = prw, aes(x = residual.sugar)) 
+
+p1 <- p +
+  geom_histogram(binwidth = .2) +
+  scale_x_continuous(lim = c(0, quantile(prw$residual.sugar, 0.95))) +
+  xlab('Residual Sugar 95th percentile')
+
+p2 <- p + 
+  geom_histogram(binwidth = .05) + 
+  scale_x_log10() + 
+  xlab('Log10 Residual Sugar 95th Percentile')
+
+p3 <- p + 
+  geom_histogram(binwidth = .1) +
+  scale_x_sqrt() + 
+  xlab('Sqrt Residual Sugar 95th Percentile')
+
+pc <- ggplot(data = prw, aes(x = chlorides))
+
+p4 <- pc +
+  geom_histogram() +
+  scale_x_continuous(lim = c(0, quantile(prw$chlorides, 0.95))) +
+  xlab('chlorides 95th percentile')
+ 
+p5 <- pc + 
+  geom_histogram(binwidth = .05) +
+  scale_x_log10() +  
+  xlab('Log10 Chlorides 95th Pecentile')
+
+p6 <- pc + 
+  geom_histogram(binwidth = .02) + 
+  scale_x_sqrt() + 
+  xlab('Sqrt Chlorides 95th Percentile')
+
+grid.arrange(p1, p4, p2, p5, p3, p6, ncol= 2)
+
+```
+
+The 95th percentile chlorides and square root of the 95th percentile of the 
+chlorides graphs are normally distributed. The remaining four graphs are 
+positively skewed and long-tailed.
+
+In the next section, I will examine how the different variables influence the 
+wine quality and rating.
+
+# Bivariate Plots Section
+
+We will start our bivariate exploration by creating a scatterplot matrix. A scatterplot matrix will allow us to see the relationships between the different variables.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Matrix_Plots}
+#creating the scatterplot matrix
+set.seed(1)
+prw_sample <- prw[sample(1:length(prw$quality), 1000),]
+ggpairs(prw_sample, cardinality_threshold = 1600,lower = list(continuous=wrap(ggally_points, shape=I('.'))), upper = list(continuous = wrap("cor", size = 3))) + theme_grey(base_size = 5)
+```
+
+The scatterplot matrix provides the various correlation coefficients for the
+different variables as well as several different graphs. It appears that the 
+best way to visualize the relationships between the chemical properties of wines versus the quality and rating variables is by creating boxplots. 
+
+Although the scatterplot matrix provides a general idea about the relationships 
+between different variables, it is important to quantify these associations. One
+method for calculating this is using "Pearson's R" correlation coefficient. The 
+coefficient ranges from -1 to +1 and can be interpreted as the following:
+
+* (+/-) 1: perfect linear relationship
+* (+/-) 0.70-0.99: strong correlatory relationship
+* (+/-) 0.50-0.69: moderate correlatory relationship
+* (+/-) 0.30-0.49: weak correlatory relationship
+
+We will visualize the Pearson's R between the different statistics by creating
+a correlation matrix.
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Correlation_Visualization}
+#convert quality to a numeric variable so that it will appear in correlation
+#matrix
+prw$quality <- as.numeric(prw$quality)
+
+ggcorr(prw[,-1], low = "steelblue", mid = "white", high = "darkred", method = c("pairwise", "pearson"), hjust = 0.85, size = 3, label = TRUE, layout.exp = 1,
+       label_round = 3, label_size = 3)
+```
+
+After calculating the correlations, the following becomes evident:
+
+* the three factors that most effect wine quality are alcohol (0.476), sulphates 
+(0.251), and volatile acidity (-0.391)
+* fixed acidity is moderately positively correlated with with citric acid 
+(0.672) and density (0.668), and moderately negatively correlated with pH 
+(-0.683)
+* volatile acidity is moderately negatively correlated with citric acid (-0.552)
+* total acidity has a very strong correlatory relationship with fixed acidity 
+(0.996), a moderate positive correlation with citric acid (0.69) and density 
+(0.676), and a moderate negative correlation with pH (-0.683)
+* citric acid has a moderate negative correlation (-0.542) with pH
+* free sulfur dioxide is moderately positively (0.668) correlated with total 
+sulfur dioxide
+* density is moderately negatively correlated with alcohol (-0.496) and strongly
+positively correlated with total acidity (0.676)
+
+Now, it's time to visualize the data. Below are the boxplots of the chemical properties found in the dataset versus the quality and rating variables, 
+respectively.The mean value for each boxplot is colored red.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plot_Functions}
+#creating a function to create boxplots for the quality variable
+quality_bivariate_boxplot <- function(y, ylab) {
+  return(ggplot(aes(factor(quality), y), 
+        data = prw) + 
+  xlab("Quality (0-10 scale)") +
+  ylab(ylab) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4))
+}
+
+rating_bivariate_boxplot <- function(y, ylab) {
+  return(ggplot(aes(rating, y), 
+        data = prw) + 
+  xlab("Rating") +
+  ylab(ylab) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4))
+}
+  
+
+#creating boxplots for quality versus the other variables
+grid.arrange (quality_bivariate_boxplot(prw$fixed.acidity, 
+                                        'Tartaric Acid (g/dm^3)'),
+rating_bivariate_boxplot(prw$fixed.acidity, 'Tartaric Acid (g/dm^3)'),
+ncol = 1)
+```
+
+Tartaric Acid acid and wine quality have a Pearson's R correlation of 0.124, 
+which is a weak positive relationship. The distribution of wine quality appears 
+to fall from 3 to 4, before rising as expected. The majority of the points fall 
+within the average range, with a wine quality of 5 or 6. Not surprisingly, there 
+are several outliers for wines with a quality of 5 or 6. The mean value 
+for the superb wines appears equal to the median, whereas the average and lousy 
+wines have means slightly above the median values. 
+
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Acetic_Acid_Bivariate_Plots}
+grid.arrange (quality_bivariate_boxplot(prw$volatile.acidity, 
+                                        'Acetic Acid (g/dm^3)'),
+              rating_bivariate_boxplot(prw$volatile.acidity,
+                                   'Acetic Acid (g/dm^3'),
+ncol = 1)
+```
+
+Acetic Acid and wine quality have a Pearson's R correlation of -0.391, which is 
+a weak negative correlation. The distribution indicates that as wine quality increases, acetic acid drops. The majority of the wines have an average rating, 
+with a wine quality of 5 or 6. The average rated wines have a mean value equal 
+to the median, whereas lousy and superb wines have mean values slightly above 
+the median. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Citric_Acid_Bivariate_Plots}
+grid.arrange (quality_bivariate_boxplot(prw$citric.acid, 
+                                        'Citric Acid (g/dm^3)'),
+rating_bivariate_boxplot(prw$citric.acid,
+                                   'Citric Acid (g/dm^3)'),
+ncol = 1)
+```
+
+Citric acid and wine quality have a Pearson's R correlation of 0.226, which is a
+weak positive correlation. The distribution indicates that as wine quality 
+increases, so does the amount of citric acid. The majority of wines are average 
+with a wine rating of 5 or 6. The lousy wines have a mean value significantly 
+above the median value due to several outliers. The average wines have a mean 
+value slightly above the median and the superb values have a mean value slightly 
+below the mean. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Total_Acidity_Bivariate_Plot}
+grid.arrange(quality_bivariate_boxplot(prw$total.acidity, 
+                          'Total Acidity (g/dm^3)'),
+ rating_bivariate_boxplot(prw$total.acidity, 'Total Acidity (g/dm^3'),
+ ncol = 1)
+```
+
+Total Acidity and wine quality have a Pearson's R correlation of 0.104 which is
+a weak positive correlation. The total acidity drops from a wine quality of 3 to 
+4, before rising the remainder of the way. The majority of wines have an average 
+rating with wine quality of 5 or 6. The mean value for superb wines appears 
+equal to the median value whereas the means for lousy and average wines are 
+above the respective median values. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Residual_Sugar_Bivariate_Plots}
+grid.arrange (quality_bivariate_boxplot(log10(prw$residual.sugar), 
+                                        'Residual Sugar (g/dm^3)'),
+              rating_bivariate_boxplot(log10(prw$residual.sugar),
+                                   'Residual Sugar (g/dm^3)'),
+ncol = 1)
+```
+
+Residual Sugar and wine quality have a Pearson's R correlation of 0.014, which
+is an extremely weak correlation. The distribution does not give any clear 
+indication about the relationship between the values. This is not surprising 
+considering the small correlation. The majority of wines are average rated with 
+a quality of 5 and 6. The mean and median value for average and superb wines 
+appear slightly above the medians values for those wines. Lousy wines have a mean
+value significantly higher than the median value. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Chlorides_Bivariate_Plots}
+grid.arrange (quality_bivariate_boxplot((log10(prw$chlorides)), 
+                          'Chlorides (g/dm^3)'),
+rating_bivariate_boxplot(log10(prw$chlorides), 'Chlorides (g/dm^3'),
+ncol = 1)
+```
+
+Chlorides and wine quality have a Pearson's R correlation of -0.129, which is a
+weak negative correlation. The distribution indicates that the amount of 
+chlorides decreases as wine quality increases. However, the opposite occurs from 
+a wine quality of 3 to 4. The majority of wines have an average rating with a 
+quality of 5 or 6. The mean and median values for lousy, average, and superb 
+wines, respectively, appear to be the same. This is surprising considering 
+the significant amount of outliers across differently rated wines. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Free_S02_Bivariate_Plot}
+grid.arrange(quality_bivariate_boxplot(prw$free.sulfur.dioxide, 
+                                       'Free SO2 (mg/dm^3)'),
+             rating_bivariate_boxplot(prw$free.sulfur.dioxide,
+                                   'Free SO2 (mg/dm^3)'),
+ncol = 1)
+```
+
+Free Sulfur Dioxide and wine quality have a Pearson's R correlation of -0.051, 
+which is an extremely weak negative correlation. The amount of free sulfur 
+dioxide increases from wine quality 3-5 before dropping the remainder of the way.
+This could not have been determined from the Pearson's R alone, but gives an 
+idea about why the correlation coefficient is so small. The majority of wines 
+have an average rating with a wine quality of 5 or 6. The mean values for all 
+the differently rated wines are above median values (for the same rating). This 
+is due to the presence of many outliers. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Total_S02_Bivariate_Plot}
+grid.arrange(quality_bivariate_boxplot(prw$total.sulfur.dioxide, 
+                                       'Total SO2 (mg/dm^3)'),
+             rating_bivariate_boxplot(prw$total.sulfur.dioxide,
+                                   'Total SO2(mg/dm^3)'),
+ncol = 1)
+```
+
+Total Sulfur Dioxide and wine quality have a Pearson's R correlation of -0.185, 
+a weak negative correlation. The distribution oscillates from low total sulfur 
+dioxides values for lower quality wines, rising for average (3-5 ) wines, before dropping again for higher quality wines (>=6). It is important to note the distribution because it indicates that the correlation value may be misleading.  
+The majority of wines have an average rating with a wine quality of 5 or 6. The 
+mean values of the lousy, average, and superb wines appears slightly above the 
+median values for the same rating. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Density_Bivariate_Plot}
+grid.arrange(quality_bivariate_boxplot(prw$density, 'Density (g/cm^3'),
+             rating_bivariate_boxplot(prw$density, 'Density (g/cm^3)'),
+ncol = 1)
+```
+
+Density and wine quality have a Pearson's R correlation of -0.175, which is a 
+weak negative correlation. The distribution is consistent with the correlation,
+except that density increases from wine quality of 3 to 4. The mean and median 
+values for lousy and average wines, respectively, are the same. Superb wines 
+have a mean slightly above the median. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, pH_Quality_Plot}
+grid.arrange(quality_bivariate_boxplot(prw$pH, 'pH'),
+                rating_bivariate_boxplot(prw$pH, 'pH'),
+ncol = 1)
+```
+
+pH and wine quality have a Pearson's R correlation of -0.058, an extremely weak
+negative correlation. The distribution is surprisingly more negatively sloped than 
+expected considering the extremely weak negative correlation. However, wine 
+qualities of 3 and 4, and 5 and 6, have the same pH values, respectively. The 
+mean and median values for each of the wine ratings appear the same.
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Sulphates_Quality_Plot}
+grid.arrange(quality_bivariate_boxplot(log10(prw$sulphates), 
+                                       'Sulphates (g/dm^3)'),
+              rating_bivariate_boxplot(log10(prw$sulphates),
+                                   'Sulphates (g/dm^3)'),
+ncol = 1)
+```
+
+Sulphates and wine quality have a Pearson's R correlation of 0.251, which is
+a weak positive correlation. The distribution supports this showing that as 
+wine quality increases, so does the amount of sulphates present. The mean and
+median values for all the different rated wines appear the same.
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Alcohol_Quality_Plot}
+grid.arrange(quality_bivariate_boxplot(prw$alcohol, 'Alcohol (% by volume)'),
+rating_bivariate_boxplot(prw$alcohol, 'Alcohol (% by volume)'),
+ncol = 1)
+```
+
+Alcohol and wine quality have a Pearson's R correlation of 0.476, a weak 
+positive correlation. The alcohol percentage decreases from a wine quality of
+3-4, before rising as expected for the remaining wines. The mean is slightly 
+above the median for lousy and average wines, whereas it is below the median
+for superb wines.
+
+In addition to the relationship between the individual variables and the quality
+and rating variables, I am also interested in investigating the relationships 
+between different variables. Below are some of the interesting relationships
+observed from the correlation matrix that will be further explored:
+
+* Fixed acidity and pH have a moderate negative correlation of -0.683
+* Density and alcohol have a moderate negative correlation of -0.496
+* Free sulfur dioxide and total sulfur dioxide have a positive correlation
+of 0.668
+
+Below are the scatterplots of the variables.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Acetic_pH_Plots}
+ggplot(aes(x = fixed.acidity, y = pH, group = 1), 
+                    data = prw) +
+    geom_point(alpha = 1/4, position = position_jitter(h = 0)) +
+    geom_smooth(method = "lm", se = FALSE, size=1) +
+    xlab('Tartaric Acid (g/dm^3)') +
+    ylab('pH') +
+    ggtitle("Tartaric Acid versus pH") + 
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+The graph represents the negative correlatory relationship between tartaric acid
+and pH. The linear regression line is negatively sloped as expected, with the
+majority of values falling between a pH of 3.0-3.75.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Density_Alcohol_Plots}
+    ggplot(aes(x = density, y = alcohol, group = 1), 
+                    data = prw) +
+    geom_point(alpha = 1/4, position = position_jitter(h = 0)) +
+    geom_smooth(method = "lm", se = FALSE, size=1) +
+    xlab('Density (g/cm^3)') +
+    ylab('Alcohol (% by volume)') +
+    ggtitle("Density versus Alcohol Content") + 
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+The graph above represents the relationship between alcohol percentage and wine
+density. The regression line is negatively sloped as expected with the majority
+of wine falling between a density of 0.995-1.000 g/cm^3.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Sulfur_Other_Plots}
+ggplot(aes(x = free.sulfur.dioxide, y = total.sulfur.dioxide, group = 1), 
+       data = prw) + 
+      geom_point(alpha = 0.05, position = position_jitter(h = 0)) + 
+      geom_smooth(method = "lm", se = FALSE, size=1) +
+      xlab('Free SO2 (mg/dm^3)') +
+      ylab('Total SO2 (mg/dm^3)') +
+      ggtitle("Free SO2 versus Total SO2") + 
+      theme(plot.title = element_text(hjust = 0.5))
+```    
+    
+The graph of Free versus Total Sulfur Dioxide indicates that as free sulfur 
+dioxide increases, so does total sulfur dioxide. This intuitively makes sense and
+also is consistent with the positive correlation factor of 0.668. 
+
+
+# Multivariate Plots and Analysis
+
+After completing univariate and bivariate exploration, I now want to examine the
+data using multivariate plots. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Alcohol_Plot}
+ggplot(aes(x = alcohol, y = volatile.acidity, color = factor(quality)), 
+       data = prw) +
+      geom_point(alpha = 0.8, size = 1) +
+      geom_smooth(method = "lm", se = FALSE,size=1)  +
+  scale_color_brewer(type='seq', palette = 'RdPu', guide=guide_legend(title='Quality')) +
+  facet_wrap(~rating) +
+  xlab("Alcohol (% by volume)") +
+  ylab("Acetic Acid (g/dm^3)") +
+  ggtitle('Alcohol versus Acetic Acid Effect on Wine Quality and Rating') +
+  theme(plot.title = element_text(hjust = 0.5, size = 13))
+```
+
+The graph above shows the effect that acetic acid and alcohol percentage have
+on wine quality and rating. We can see for lower rated wines and wines with a 
+a quality of 8, as alcohol percentage increases, so does the amount of acetic 
+acid. However, the opposite case is true for average wines and wines of a 
+quality of 7. Overall, the greater acetic acid and less alcohol content is 
+correlated with a decrease in wine quality and rating.
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Sulphates_Plot}
+ggplot(aes(x = alcohol, y = log10(sulphates)  , color = factor(quality)), 
+       data = prw) +
+      geom_point(alpha = 0.8, size = 1) +
+      geom_smooth(method = "lm", se = FALSE,size=1)  +
+  scale_color_brewer(type='seq', palette = 'RdPu', guide=guide_legend(title='Quality')) +
+  facet_wrap(~rating) +
+  xlab("Alcohol (% by volume)") +
+  ylab("log10() Sulphates (g/dm^3)") +
+  ggtitle('Alcohol versus log10() Sulphates Effect on Wine Quality and Rating') +
+  theme(plot.title = element_text(hjust = 0.5, size = 13))
+```
+
+The graph above shows the effect that log10() sulphates and alcohol percentage 
+have on wine quality and rating. It appears that log10() sulphates and alcohol
+percentage are negatively correlated for all wine ratings. Overall, better 
+quality and higher rated wines have more sulphate content and a higher 
+percentage of alcohol. 
+
+``` {r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Acetic_Plots}
+ggplot(aes(x = log10(sulphates), y = volatile.acidity, color = factor(quality)), 
+       data = prw) +
+      geom_point(alpha = 0.8, size = 1) +
+      geom_smooth(method = "lm", se = FALSE,size=1)  +
+      scale_color_brewer(type='seq', palette = 'RdPu', guide=guide_legend(title='Quality')) +
+  facet_wrap(~rating) +
+  xlab('log10() Sulphates (g/dm^3)') +
+  ylab("Acetic Acid (g/dm^3)") +
+  ggtitle('log10() Sulphates versus Acetic Acid Effect on Wine Quality and Rating') +
+  theme(plot.title = element_text(hjust = 0.5, size = 13))
+```
+
+The graph above shows the effect that acetic acid and log10() sulphates have
+on wine quality and rating. Acetic acid and log10() sulphates appear to be 
+negatively correlated for all wine qualities and ratings. Overall, better rated
+and higher quality wines have less acetic acid, but greater sulphate content.
+
+------
+
+# Final Plots and Summary
+
+### Plot One: Acid Boxplots
+```{r echo=FALSE, message = FALSE, warning = FALSE, Plot_One}
+#creating boxplots for the effect that different acids have on wine quality
+
+grid.arrange(ggplot(data = prw, aes(x = quality, y = fixed.acidity)) + 
+               ylab('Tartaric Acid (g/dm^3)') +
+               xlab('Quality') +
+               geom_boxplot() +
+               ggtitle('Tartaric Acid versus Wine Quality'),
+             
+             ggplot(data = prw, aes(x = quality, y = volatile.acidity)) +
+               ylab('Acetic Acid (g/dm^3)') +
+               xlab('Quality') +
+               geom_boxplot() +
+               ggtitle('Acetic Acid versus Wine Quality'), 
+             
+             ggplot(data = prw, aes(x = quality, y = citric.acid)) +
+               ylab('Citric Acid (g/dm^3)') +
+               xlab('Quality') +
+               geom_boxplot() +
+               ggtitle('Citric Acid versus Wine Quality'), 
+             
+             ggplot(data = prw, aes(x = quality, y = total.acidity)) +
+               ylab('Total Acidity (g/dm^3') +
+               xlab('Quality') +
+               geom_boxplot() +
+               ggtitle('Total Acidity Versus Wine Quality'),
+             
+             ncol = 2)
+```
+
+### Description One
+
+Above are four boxpltos that represent the correlation between tartaric acid 
+(fixed acidity), acetic acid (volatile acidity), citric acid, and total acidity 
+and wine quality. The acetic acid boxplot indicates a negative correlatory relationship whereas the citric acid boxplot indicates a positive correlatory relationship. This makes sense because those variables had a correlation 
+coefficient of -0.391 and 0.226, respectively. Furthermore, it appears that 
+tartaric acid has a weak correlation to wine quality, which is expected as its correlation coefficient is 0.124. Finally, total acidity does not appear to have
+any clear trends. This is unsurprising since total acidity is the sum of the 
+other three acids, which have countering effects.  
+
+
+### Plot Two: Density versus Alcohol Plot
+```{r echo=FALSE, Plot_Two}
+#density and alcohol plot
+
+ggplot(aes(x = density, y = alcohol, group = 1), 
+                    data = prw) +
+    geom_point(alpha = 1/4, position = position_jitter(h = 0)) +
+    xlab("Alcohol (% by Volume)") +
+    ylab("Density (g/cm^3)") + 
+    geom_smooth(method = 'lm', color = 'red') +
+    ggtitle("Density versus Alcohol Content") + 
+    theme(plot.title = element_text(hjust = 0.5))
+     
+```
+
+
+### Description Two
+The graph above plots alcohol, by percent of volume, to density, in grams per centimeters cubed. I was interested in looking at this data in more detail after initially observing that alcohol content and density would be related. Using "geom_smooth()" to observe the conditional means, we can see that as alcohol 
+content increases, the density decreases. This is not a surprise because we 
+earlier noted a -0.496 correlatory relationship between the two factors.
+
+
+### Plot Three: Alcohol versus Acetic Acid Effect on Wine Quality and Rating
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(x = alcohol, y = volatile.acidity, color = factor(quality)), 
+       data = prw) +
+      geom_point(alpha = 0.8, size = 1) +
+      geom_smooth(method = "lm", se = FALSE,size=1)  +
+  scale_color_brewer(type='seq', palette = 'RdPu', guide=guide_legend(title='Quality')) +
+  facet_wrap(~rating) +
+  xlab("Alcohol (% by volume)") +
+  ylab("Acetic Acid (g/dm^3)") +
+  ggtitle('Alcohol versus Acetic Acid Effect on Wine Quality and Rating') +
+  theme(plot.title = element_text(hjust = 0.5, size = 13))
+```
+
+### Description Three
+
+The graph above displays the effects of the two variables most highly correlated
+with wine quality and rating: acetic acid (volatile acidity) and alcohol content.
+The quality of wine is represented by the color of the dots and the lines, which 
+are explained by the legend to the right of the graph. Each of the three boxes represents a specific wine rating, ranging from lousy (leftmost) to superb (rightmost). The alcohol content is displayed by by percent volume on the x-axis whereas acetic acid is represented by grams per cubic decimeter on the y-axis. 
+
+It can be observed that for lower rated wines and wines with a a quality of 8, 
+as alcohol percentage increases, so does the amount of acetic acid. However, the opposite case is true for average wines and wines of a quality of 7. Overall, 
+the greater acetic acid and less alcohol content is correlated with a decrease 
+in wine quality and rating.
+
+------
+
+# Reflection
+
+Exploring the red wine dataset led to many interesting insights. It was observed 
+that the three factors that primarily impact wine quality are alcohol content, volatile acidity (acetic acid), and sulphate content. Alcohol percentage and 
+sulphate content positively correlate with wine quality and rating, whereas 
+acetic acid has a negative  correlation. The correlation coefficient for these 
+three values are 0.476, 0.251, and -0.391, respectively.
+Apart from the effects of the factors on wine quality, alcohol also has -0.496 
+Pearson's correlation coefficient with density.
+
+Although the majority of the analysis was straightforward, some difficulties did arise. One cause of these difficulties was being prompted to adjust the graphs' binwidths. These changes would alter the graph distributions. For example, the 
+initial log10() transformation made the Total Sulfur Dioxide, Sulphates, Fixed 
+and Volatile Acidity univariate graphs normally distributed. However, after 
+altering the binwidth, none of the graphs appeared normal. This happened for 
+other transformations and graphs as well. Determining an appropriate binwidth 
+while remaining unbiased proved difficult. Another problem encountered was using
+the square root and log transformations for the univariate graphs prevented me 
+from adjusting the x-axis labels. Finally, I had several issues creating the scatterplot matrix such as making sure the graphs and correlation coefficients 
+were legible. 
+
+There are some improvements that can be made to improve future analysis of the dataset. One suggestion is to increase the amount of the data collected for 
+"lousy" and "superb" rated wine. It is evident from graphs, such as final plot 3,
+that the majority of the data points fall in the average range. Adding more data points would improve the quality of the analysis. 
